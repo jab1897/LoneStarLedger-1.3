@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, FormEvent } from "react";
+import { useEffect, useState, useCallback, FormEvent } from "react";
 
 type Article = { id: number; title: string; body: string; created_at: string };
 
@@ -11,18 +11,25 @@ export default function Home() {
   const [title, setTitle] = useState("");
   const [body, setBody] = useState("");
 
-  async function load() {
+  // Memoize load so useEffect can depend on it cleanly
+  const load = useCallback(async () => {
     try {
       const health = await fetch(`${base}/health`, { cache: "no-store" });
       setStatus(health.ok ? "API is healthy" : `API error ${health.status}`);
       const a = await fetch(`${base}/v1/articles`, { cache: "no-store" });
       if (a.ok) setList(await a.json());
-    } catch (err: any) {
-      setStatus(`API unreachable: ${err?.message ?? String(err)}`);
+    } catch (err: unknown) {
+      setStatus(
+        `API unreachable: ${
+          err instanceof Error ? err.message : String(err)
+        }`
+      );
     }
-  }
+  }, [base]);
 
-  useEffect(() => { load(); }, []);
+  useEffect(() => {
+    void load();
+  }, [load]);
 
   async function submit(e: FormEvent) {
     e.preventDefault();
@@ -35,7 +42,7 @@ export default function Home() {
     if (r.ok) {
       setTitle("");
       setBody("");
-      await load();
+      void load();
     }
   }
 
@@ -61,7 +68,9 @@ export default function Home() {
             value={body}
             onChange={(e) => setBody(e.target.value)}
           />
-          <button className="rounded-xl border px-4 py-2 shadow w-fit">Post</button>
+          <button className="rounded-xl border px-4 py-2 shadow w-fit">
+            Post
+          </button>
         </form>
 
         <div className="space-y-4">
