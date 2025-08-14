@@ -1,31 +1,30 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, FormEvent } from "react";
 
 type Article = { id: number; title: string; body: string; created_at: string };
 
 export default function Home() {
-  const [status, setStatus] = useState("Checking API…");
+  const base = process.env.NEXT_PUBLIC_API_BASE ?? "";
+  const [status, setStatus] = useState("Checking API...");
   const [list, setList] = useState<Article[]>([]);
   const [title, setTitle] = useState("");
   const [body, setBody] = useState("");
 
-  const base = process.env.NEXT_PUBLIC_API_BASE ?? "";
-
   async function load() {
     try {
-      const r = await fetch(`${base}/health`, { cache: "no-store" });
-      setStatus(r.ok ? "API is healthy" : `API error ${r.status}`);
+      const health = await fetch(`${base}/health`, { cache: "no-store" });
+      setStatus(health.ok ? "API is healthy" : `API error ${health.status}`);
       const a = await fetch(`${base}/v1/articles`, { cache: "no-store" });
       if (a.ok) setList(await a.json());
-    } catch (e: any) {
-      setStatus(`API unreachable: ${e?.message ?? e}`);
+    } catch (err: any) {
+      setStatus(`API unreachable: ${err?.message ?? String(err)}`);
     }
   }
 
   useEffect(() => { load(); }, []);
 
-  async function submit(e: React.FormEvent) {
+  async function submit(e: FormEvent) {
     e.preventDefault();
     if (!title.trim() || !body.trim()) return;
     const r = await fetch(`${base}/v1/articles`, {
@@ -41,11 +40,11 @@ export default function Home() {
   }
 
   return (
-    <main className="min-h-screen p-6 md:p-10 flex flex-col gap-8 items-center">
+    <main className="min-h-screen p-6 flex flex-col gap-8 items-center">
       <div className="w-full max-w-2xl rounded-2xl shadow p-6 border">
         <h1 className="text-2xl font-semibold mb-3">LoneStarLedger 1.3</h1>
         <p className="mb-4">
-          NEXT_PUBLIC_API_BASE: <code>{process.env.NEXT_PUBLIC_API_BASE ?? "(not set)"}</code>
+          NEXT_PUBLIC_API_BASE: <code>{base || "(not set)"}</code>
         </p>
         <p className="font-medium mb-6">{status}</p>
 
@@ -66,10 +65,12 @@ export default function Home() {
         </form>
 
         <div className="space-y-4">
-          {list.map(a => (
+          {list.map((a) => (
             <div key={a.id} className="border rounded-xl p-4">
               <div className="font-semibold">{a.title}</div>
-              <div className="text-sm opacity-70">{new Date(a.created_at).toLocaleString()}</div>
+              <div className="text-sm opacity-70">
+                {new Date(a.created_at).toLocaleString()}
+              </div>
               <p className="mt-2 whitespace-pre-wrap">{a.body}</p>
             </div>
           ))}
